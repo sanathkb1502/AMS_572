@@ -261,7 +261,7 @@ print(contingency_table)
 
 -   There are 2 variables, and both are measured as categories, usually at the nominal level.
 
--   The sample size is more than 20.
+-   Large sample sample size with small percentage of expected cell counts less than 5
 
 Since all the assumptions for a χ^2^ are satisfied, we proceed with the test.
 
@@ -380,8 +380,6 @@ The chi-square values decrease as the percentage of missing values increases. Th
 
 ## Hypothesis - 2
 
-############### 
-
 `Null hypothesis - H0` : The likelihood of a student dropping out is not impacted by economic climate when courses, gender, and grades are equal.
 
 `Alternative hypothesis - Ha` : The likelihood of a student dropping out is impacted by economic climate when courses, gender, and grades are equal.
@@ -390,7 +388,7 @@ The chi-square values decrease as the percentage of missing values increases. Th
 
 To identify the influence of independent variable on dependent variable we use `Generalized Linear Model (GLM)`. A Generalized Linear Model (GLM) is a flexible generalization of ordinary linear regression that allows for dependent variables that have error distribution models other than a normal distribution. GLM generalizes linear regression by allowing the linear model to be related to the dependent variable via a link function and by allowing the magnitude of the variance of each measurement to be a function of its predicted value.
 
-`Critical region`, for the test, is defined based on the p-values of the coefficients in the logistic regression model. If the p-value for any of the coefficients (marital status, age, previous academic qualifications and grades ) is less than 0.05, we reject null hypothesis. \###########
+`Critical region`, for the test, is defined based on the p-values of the coefficients in the logistic regression model. If the p-value for any of the coefficients (marital status, age, previous academic qualifications and grades ) is less than 0.05, we reject null hypothesis.
 
 ```{r}
 
@@ -402,7 +400,7 @@ print(model_summary)
 
 ```
 
-`Conclusions:` \####### None of the economic KPI's were significant. Unemployment, Inflation rate and GDP all had p values greater than 0.05. The variables that had significant relationships with dropout were Gender, admission grades and the students semester 1 grade (P values \< 0.01). Specific courses also showed significant differences in the likelihood of dropping out, notably course 171 had the lowest odds of dropping out.
+`Conclusions:` None of the economic KPI's were significant. Unemployment rate, Inflation rate, and GDP all had p values greater than 0.05. The variables that had significant relationships with dropout were Gender, admission grades and the students semester 1 grade (P values \< 0.01). Specific courses also showed significant differences in the likelihood of dropping out, notably course 171 had the lowest odds of dropping out.
 
 ## Effects of missing values
 
@@ -414,7 +412,7 @@ Now, we will investigate the effect of missing values on data analysis for the f
 
 ### Data missing completely at random (MCAR)
 
-We don't have any missing values in our dataset, let's simulate a dataset with data missing at random. \###############
+We don't have any missing values in our dataset, let's simulate a dataset with data missing at random. \#
 
 ```{r}
 MCAR_Chi_TestII <- function(prop_missing){ 
