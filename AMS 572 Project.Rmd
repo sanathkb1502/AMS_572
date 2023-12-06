@@ -21,17 +21,23 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Required Packages
 
-```{r, required_packages, eval=FALSE}
-install.packages("caret")
+```{r, required_packages, eval=FALSE, include = FALSE}
+
+install.packages("ggplot2")
 install.packages("vcd")
+install.packages("dplyr")
+install.packages("knitr")
+install.packages("caret")
 install.packages("leaps")
 install.packages("corrplot")
 install.packages("tidyverse")
-install.packages("knitr")
 install.packages("mice")
+install.packages("ranger")
+install.packages("patchwork")
+install.packages("gridExtra")
 ```
 
-```{r include=FALSE}
+```{r include=TRUE, results='hide', echo =TRUE, message=FALSE, warning=FALSE}
 library("ggplot2")
 library("vcd")
 library("dplyr")
@@ -41,6 +47,9 @@ library("leaps")
 library("corrplot")
 library("tidyverse")
 library("mice")
+library("ranger")
+library("patchwork")
+library("gridExtra")
 ```
 
 # 2. Exploratory Data Analysis
@@ -114,80 +123,90 @@ There were no missing values in the dataset.
 
 ## Key facts based on descriptive statistics
 
-```{r}
-sprintf("mean = %f", mean(data$Previous_qualification_grade)) 
-sprintf("standard deviation = %f", sd(data$Previous_qualification_grade))
+```{r echo=FALSE}
+mean_prev_qual_grade <- mean(data$Previous_qualification_grade, na.rm = TRUE)
+sd_prev_qual_grade <- sd(data$Previous_qualification_grade, na.rm = TRUE)
+
+mean_admission_grade <- mean(data$Admission_grade, na.rm = TRUE)
+sd_admission_grade <- sd(data$Admission_grade, na.rm = TRUE)
+
+mean_curricular_units_sem1_grade <- mean(data$Curricular_units_Sem1_grade, na.rm = TRUE)
+sd_curricular_units_sem1_grade <- sd(data$Curricular_units_Sem1_grade, na.rm = TRUE)
+
+mean_curricular_units_sem2_grade <- mean(data$Curricular_units_Sem2_grade, na.rm = TRUE)
+sd_curricular_units_sem2_grade <- sd(data$Curricular_units_Sem2_grade, na.rm = TRUE)
+
+mean_unemployment_rate <- mean(data$Unemployment_rate, na.rm = TRUE)
+sd_unemployment_rate <- sd(data$Unemployment_rate, na.rm = TRUE)
+
+mean_GDP <- mean(data$GDP, na.rm = TRUE)
+sd_GDP <- sd(data$GDP, na.rm = TRUE)
+
+stats_table <- data.frame(
+  Grade_Type = c("Previous Qualification Grade", "Admission Grade", 
+                 "Curricular Units Sem1 Grade", "Curricular Units Sem2 Grade",
+                 "Unemployment Rate", "GDP"),
+  Mean = c(mean_prev_qual_grade, mean_admission_grade, 
+           mean_curricular_units_sem1_grade, mean_curricular_units_sem2_grade, 
+           mean_unemployment_rate, mean_GDP),
+  Standard_Deviation = c(sd_prev_qual_grade, sd_admission_grade, 
+                         sd_curricular_units_sem1_grade, sd_curricular_units_sem2_grade, 
+                         sd_unemployment_rate, sd_GDP)
+)
+
+print(stats_table)
 ```
 
 The average **`Previous_qualification_grade`** was around `132.61` with a standard deviation of approximately `13.2`, indicating a moderate range variability of academic backgrounds among students.
 
-```{r}
-sprintf("mean = %f", mean(data$Admission_grade)) 
-sprintf("standard deviation = %f", sd(data$Admission_grade))
-```
-
 The average **`Admission_grade`** was around `126.97` with a standard deviation of approximately `14.48`, indicating a high range of variability academic backgrounds among students.
-
-```{r}
-sprintf("mean of grades in Semester-1= %f", mean(data$Curricular_units_Sem1_grade))
-sprintf("standard deviation  of grades in Semester-1 = %f", sd(data$Curricular_units_Sem1_grade))
-sprintf("mean  of grades in Semester-2 = %f", mean(data$Curricular_units_Sem2_grade)) 
-sprintf("standard deviation  of grades in Semester-2 = %f", sd(data$Curricular_units_Sem2_grade))
-```
 
 The average grades for the first and second semesters **`Curricular_units_Sem1_grade`** and **`Curricular_units_Sem2_grade`** were similar, but the standard deviation of semester-2 grades is noticebly higher. This suggests a varied academic performance across students.
 
 ## Some interesting plots
 
-```{r}
+```{r gender-martial-target-plot, echo=FALSE, fig.height=3, fig.show='hold', fig.width=10}
+
+par(mfrow=c(1,2))
+
 gender_target_table <- table(data$Gender, data$Target)
-mosaicplot(color = TRUE, gender_target_table, main = "Mosaic Plot of Gender and Target", 
+mosaicplot(color = TRUE, gender_target_table, main = "Gender and Target", 
            xlab = "Gender", ylab = "Target")
+
+marital_target_table <- table(data$Marital_status, data$Target)
+mosaicplot(color = TRUE, marital_target_table, main = "Marital Status and Target",
+           xlab = "Marital Status", ylab = "Target")
 ```
 
 `1` - Male, `0` - Female
 
-```{r}
-marital_target_table <- table(data$Marital_status, data$Target)
-mosaicplot(color = TRUE, marital_target_table, main = "Mosaic Plot of Marital Status and Target",
-           xlab = "Marital Status", ylab = "Target")
-```
-
 `1` - Single, `2` - Married, `3` - Widower, `4` - Divorced, `5` - Facto Union, `6` - Legally Separated
 
-```{r}
-attend_target_table <- table(data$Attendance, data$Target)
-mosaicplot(color = TRUE, attend_target_table, main = "Mosaic Plot of Attendance and Target", xlab = "Attendance", ylab = "Target")
-```
+```{r debtor-target-scholar-plot, echo=FALSE, fig.height=3, fig.show='hold', fig.width=10}
 
-`0` - Evening, `1` - Daytime
+par(mfrow=c(1,2))
 
-```{r}
 debtor_target_table <- table(data$Debtor, data$Target)
-mosaicplot(color = TRUE, debtor_target_table, main = "Mosaic Plot of Debtor and Target", 
+mosaicplot(color = TRUE, debtor_target_table, main = "Debtor and Target", 
            xlab = "Debtor", ylab = "Target")
+
+scholar_target_table <- table(data$Scholarship_holder, data$Target)
+mosaicplot(color = TRUE, scholar_target_table, main = "Scholarhip Holder and Target", 
+           xlab = "Scholarship Holder", ylab = "Target")
 ```
 
 `0` - No, `1` - Yes
 
-```{r}
-scholar_target_table <- table(data$Scholarship_holder, data$Target)
-mosaicplot(color = TRUE, scholar_target_table, main = "Mosaic Plot of Scholarhip Holder and Target", 
-           xlab = "Scholarship Holder", ylab = "Target")
-```
+```{r hist-scatter-plot, echo=FALSE, fig.height=3, fig.show='hold', fig.width=10}
 
-```{r}
-ggplot(data, aes(x = Age_at_enrollment)) +
+plot1 <- ggplot(data, aes(x = Age_at_enrollment)) +
   geom_histogram(binwidth = 1, fill = "blue", color = "black") +
   theme_minimal() +
   ggtitle("Histogram of Age at Enrollment") +
   xlab("Age at Enrollment") +
   ylab("Frequency")
 
-```
-
-```{r}
-ggplot(data, aes(x = Curricular_units_Sem1_grade, y = Curricular_units_Sem2_grade,
+plot2 <- ggplot(data, aes(x = Curricular_units_Sem1_grade, y = Curricular_units_Sem2_grade,
                  color = Target)) +
   geom_point() +  # Add points
   theme_minimal() +
@@ -197,6 +216,7 @@ ggplot(data, aes(x = Curricular_units_Sem1_grade, y = Curricular_units_Sem2_grad
   scale_color_brewer(type = "qual", palette = "Set1") + # Color scheme
   theme(legend.position = "right") # Position of the legend
 
+(plot1 + plot2)
 ```
 
 # 3. Hypotheses, Methodology and Testing
@@ -215,13 +235,13 @@ data$dropout <- ifelse(data$Target == "Dropout",1,0)
 
 Created a new column **`dropout`** with integer encoding of the **`Target`** such that **`dropout`**`= 1` when student's **`Target`** variable is 'dropout', **`dropout`**`= 0` otherwise.
 
-```{r}
+```{r include=FALSE}
 table(data$dropout)
 ```
 
 There are 1421 dropouts and 3003 students who are graduated or still enrolled.
 
-```{r}
+```{r echo=FALSE}
 contingency_table <- table(data[,c('Gender','dropout')])
 names(dimnames(contingency_table)) <- c('Gender', 'Dropout')
 colnames(contingency_table) <- c("Grad/Enrolled", "Dropout")
@@ -254,12 +274,11 @@ df <- 1
 alpha <- 0.05
 
 critical_value <- qchisq(1 - alpha, df)
-print(critical_value)
 ```
 
 The critical region, $C_{\alpha}$ is
 
-```{r}
+```{r include=FALSE}
 
 x_values <- seq(0, critical_value + 10, by = 0.1)
 chi_sq_df <- data.frame(x = x_values, y = dchisq(x_values, df))
@@ -283,7 +302,7 @@ print(ind_test_g_d)
 
 Since, $\chi^2$(=183.16) \> $3.8415$ we reject the null hypothesis `H0` in favor of `Ha` and conclude that there exists a significant dependence of **`Target`** column on **`Gender`** column.
 
-```{r}
+```{r echo=FALSE, fig.height=4}
 barplot(contingency_table, beside = TRUE, col = c("lightblue", "lightgreen"),
         main = "Side-by-Side Bar Chart of Gender and Dropout",
         xlab = "Gender", ylab = "Count",
