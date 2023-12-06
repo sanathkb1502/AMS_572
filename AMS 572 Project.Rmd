@@ -1,0 +1,533 @@
+---
+title: "AMS572: Project report"
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+
+# 1. Introduction
+
+The landscape of higher education has witnessed profound changes, spurred by globalization and a diversification of student demographics. Amidst this evolving educational milieu, understanding the determinants of academic success has become paramount for educators, policymakers, and researchers alike. This project, rooted in the heart of this context, aims to delve into the complex dynamics of academic achievement, focusing on students from various countries. The pivotal objective is to unravel the intricate interplay of factors that sculpt educational outcomes, thereby providing insightful contributions to the field of educational research.
+
+The pursuit of academic success is not merely an individual endeavor but is deeply intertwined with broader societal and demographic factors. Among these, gender has emerged as a significant variable. Extensive research has demonstrated that gender differences in educational achievement are pervasive, yet the underlying causes and implications of these disparities remain a topic of intense debate. By examining the relationship between gender and academic success.
+
+Furthermore, the project transcends mere correlation by adopting a robust analytical approach through the use of Generalized Linear Models (GLMs). GLMs offer a flexible framework for analyzing data with varied distributions, making them particularly suited for educational data, which often encompasses binary outcomes, count data, and continuous measurements. By incorporating a range of demographic and socio-economic variables into the GLM, this study endeavors to construct a comprehensive model of academic outcomes.
+
+## Setup
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Required Packages
+
+```{r, required_packages, eval=FALSE}
+install.packages("caret")
+install.packages("vcd")
+install.packages("leaps")
+install.packages("corrplot")
+install.packages("tidyverse")
+install.packages("knitr")
+install.packages("mice")
+```
+
+```{r include=FALSE}
+library("ggplot2")
+library("vcd")
+library("dplyr")
+library("knitr")
+library("caret")
+library("leaps")
+library("corrplot")
+library("tidyverse")
+library("mice")
+```
+
+# 2. Exploratory Data Analysis
+
+## Data
+
+The dataset originates from a higher education institution and is compiled from various separate databases. Each instance (each row) represents a student, it encompasses data about students enrolled in diverse undergraduate programs, including fields like agronomy, design, education, nursing, journalism, management, social service, and technology. This dataset captures details available at the point of student admission, covering their academic history, demographic background, and socio-economic factors. It also includes records of their academic achievements at the conclusion of their first and second semesters. The primary use of this data is in developing classification models aimed at predicting student attrition and academic success. The classification task is divided into three categories, with a notable imbalance favoring one of the categories.
+
+```{r}
+data <- read.csv("AcademicSuccessData.csv")
+data$Course <- as.factor(data$Course)
+```
+
+The dataset comprises of 4424 instances (rows) and 36 features (columns). Columns listed below are important columns of data:
+
+**`Student_ID`** - Integer - Uniquely identify each student
+
+**`Marital_status`** - Categorical - Describes marital status of student
+
+**`Course`** - Categorical - Describes course in which student is enrolled
+
+**`Attendance`** - Categorical - Describes whether student attendance is in daytime or evening
+
+**`Previous_qualification`** - Categorical - Describes highest education level attained by student
+
+**`Previous_qualification_grade`** - Categorical - Describes grade achieved by student in his previous qualification
+
+**`Nationality`** - Categorical - Describes the nationality of the student
+
+**`Mother_qualification`** - Categorical - Describes highest education level attained by mother of the student
+
+**`Father_qualification`** - Categorical - Describes highest education level attained by father of the student
+
+**`Mother_occupation`** - Categorical - Describes occupation of mother of the student
+
+**`Father_occupation`** - Categorical - Describes occupation of father of the student
+
+**`Admission_grade`** - Decimal - Describes the grade achieved by student in previous qualification
+
+**`Displaced`** - Categorical - Describes if student is displaced
+
+**`Educational_special_needs`** - Categorical - Describes if student have special education needs in reading, writing, speaking or understanding
+
+**`Debtor`** - Categorical - Describes if student is on education loan to complete pursue the degree
+
+**`Tuition_fees_up_to_date`** - Categorical - Describes if student is paying tuition fee on time
+
+**`Gender`** - Categorical - Describes the gender of the student
+
+**`Scholarship_holder`** - Categorical - Describes if student is receiving any cholarship from the university
+
+**`Age_at_enrollment`** - Numeric - Describes age of the student at the time of enrollment
+
+**`International`** - Categorical - Describes if the student is an international student at university
+
+**`Curricular_units_Sem1_grade`** - Decimal - Describes the grade average of the student in 1^st^ semester
+
+**`Curricular_units_Sem2_grade`** - Decimal - Describes the grade average of the student in 2^nd^ semester
+
+**`Unemployment_rate`** - Decimal - Unemployment rate in the country of student nationality
+
+**`GDP`** - Decimal - GDP of the country of student nationality
+
+**`Target`** - Categorical - Describes if the student is a dropout or graduated or still enrolled
+
+```{r}
+sum(is.na(data))
+```
+
+There were no missing values in the dataset.
+
+## Key facts based on descriptive statistics
+
+```{r}
+sprintf("mean = %f", mean(data$Previous_qualification_grade)) 
+sprintf("standard deviation = %f", sd(data$Previous_qualification_grade))
+```
+
+The average **`Previous_qualification_grade`** was around `132.61` with a standard deviation of approximately `13.2`, indicating a moderate range variability of academic backgrounds among students.
+
+```{r}
+sprintf("mean = %f", mean(data$Admission_grade)) 
+sprintf("standard deviation = %f", sd(data$Admission_grade))
+```
+
+The average **`Admission_grade`** was around `126.97` with a standard deviation of approximately `14.48`, indicating a high range of variability academic backgrounds among students.
+
+```{r}
+sprintf("mean of grades in Semester-1= %f", mean(data$Curricular_units_Sem1_grade))
+sprintf("standard deviation  of grades in Semester-1 = %f", sd(data$Curricular_units_Sem1_grade))
+sprintf("mean  of grades in Semester-2 = %f", mean(data$Curricular_units_Sem2_grade)) 
+sprintf("standard deviation  of grades in Semester-2 = %f", sd(data$Curricular_units_Sem2_grade))
+```
+
+The average grades for the first and second semesters **`Curricular_units_Sem1_grade`** and **`Curricular_units_Sem2_grade`** were similar, but the standard deviation of semester-2 grades is noticebly higher. This suggests a varied academic performance across students.
+
+## Some interesting plots
+
+```{r}
+gender_target_table <- table(data$Gender, data$Target)
+mosaicplot(color = TRUE, gender_target_table, main = "Mosaic Plot of Gender and Target", 
+           xlab = "Gender", ylab = "Target")
+```
+
+`1` - Male, `0` - Female
+
+```{r}
+marital_target_table <- table(data$Marital_status, data$Target)
+mosaicplot(color = TRUE, marital_target_table, main = "Mosaic Plot of Marital Status and Target",
+           xlab = "Marital Status", ylab = "Target")
+```
+
+`1` - Single, `2` - Married, `3` - Widower, `4` - Divorced, `5` - Facto Union, `6` - Legally Separated
+
+```{r}
+attend_target_table <- table(data$Attendance, data$Target)
+mosaicplot(color = TRUE, attend_target_table, main = "Mosaic Plot of Attendance and Target", xlab = "Attendance", ylab = "Target")
+```
+
+`0` - Evening, `1` - Daytime
+
+```{r}
+debtor_target_table <- table(data$Debtor, data$Target)
+mosaicplot(color = TRUE, debtor_target_table, main = "Mosaic Plot of Debtor and Target", 
+           xlab = "Debtor", ylab = "Target")
+```
+
+`0` - No, `1` - Yes
+
+```{r}
+scholar_target_table <- table(data$Scholarship_holder, data$Target)
+mosaicplot(color = TRUE, scholar_target_table, main = "Mosaic Plot of Scholarhip Holder and Target", 
+           xlab = "Scholarship Holder", ylab = "Target")
+```
+
+```{r}
+ggplot(data, aes(x = Age_at_enrollment)) +
+  geom_histogram(binwidth = 1, fill = "blue", color = "black") +
+  theme_minimal() +
+  ggtitle("Histogram of Age at Enrollment") +
+  xlab("Age at Enrollment") +
+  ylab("Frequency")
+
+```
+
+```{r}
+ggplot(data, aes(x = Curricular_units_Sem1_grade, y = Curricular_units_Sem2_grade,
+                 color = Target)) +
+  geom_point() +  # Add points
+  theme_minimal() +
+  ggtitle("Scatterplot of Grades in Semester 1 vs Semester 2") +
+  xlab("Curricular Units Grade in Semester 1") +
+  ylab("Curricular Units Grade in Semester 2") +
+  scale_color_brewer(type = "qual", palette = "Set1") + # Color scheme
+  theme(legend.position = "right") # Position of the legend
+
+```
+
+# 3. Hypotheses, Methodology and Testing
+
+## Hypothesis - 1
+
+`Null hypothesis - H0`: There is no significant relation between gender of a student and their academic success.
+
+`Alternative hypothesis - Ha`: There is a significant relation between gender of a student and their academic success.
+
+To investigate the relationship between the **`Gender`** and **`Target`** columns, which are both categorical, a Chi-square test would be appropriate. Hence, we will employ $\chi^2$ as our test statistic. The chosen significance level, $\alpha$, is `0.05`
+
+```{r}
+data$dropout <- ifelse(data$Target == "Dropout",1,0)
+```
+
+Created a new column **`dropout`** with integer encoding of the **`Target`** such that **`dropout`**`= 1` when student's **`Target`** variable is 'dropout', **`dropout`**`= 0` otherwise.
+
+```{r}
+table(data$dropout)
+```
+
+There are 1421 dropouts and 3003 students who are graduated or still enrolled.
+
+```{r}
+contingency_table <- table(data[,c('Gender','dropout')])
+names(dimnames(contingency_table)) <- c('Gender', 'Dropout')
+colnames(contingency_table) <- c("Grad/Enrolled", "Dropout")
+rownames(contingency_table) <- c("Female","Male")
+print(contingency_table)
+```
+
+`Assumptions:`
+
+-   The data in the cells should be frequencies, or counts of cases rather than percentages or some other transformation of the data.
+
+-   The levels categories of the variables are mutually exclusive. That is, a particular subject fits into one and only one level of each of the variables.
+
+-   Each subject may contribute data to one and only one cell in the $\chi^2$.
+
+-   The study groups must be independent.
+
+-   There are 2 variables, and both are measured as categories, usually at the nominal level.
+
+-   The sample size is more than 20.
+
+Since all the assumptions for a χ^2^ are satisfied, we proceed with the test.
+
+The degrees of freedom for a $\chi^2$ test is, $df = (r - 1) \times (c - 1)$
+
+where $r$ is the number of categories in one variable, and $c$ is the number of categories in another. In **`Gender`** there are two categories ( `0` - Male, `1` - Female), but in **`Target`** we will consider only two categories ( `1` - dropout, `0` - not_dropout). Hence the value of $df = (2 - 1) \times (2 - 1)$ which is, $1.$
+
+```{r}
+df <- 1
+alpha <- 0.05
+
+critical_value <- qchisq(1 - alpha, df)
+print(critical_value)
+```
+
+The critical region, $C_{\alpha}$ is
+
+```{r}
+
+x_values <- seq(0, critical_value + 10, by = 0.1)
+chi_sq_df <- data.frame(x = x_values, y = dchisq(x_values, df))
+
+ggplot(chi_sq_df, aes(x = x, y = y)) + 
+  geom_line() +
+  geom_area(data = subset(chi_sq_df, x >= critical_value), fill = "red", alpha = 0.5) +
+  geom_vline(xintercept = critical_value, linetype = "dashed", color = "blue") +
+  ggtitle("Chi-square distribution with critical region") +
+  xlab("Chi-square value") +
+  ylab("Density") +
+  theme_minimal()
+```
+
+At the significance level, $\alpha = 0.5$, we reject the `H0` in favor of `Ha` if $\chi^2$ \> $3.8415$
+
+```{r}
+ind_test_g_d <- chisq.test(contingency_table)
+print(ind_test_g_d)
+```
+
+Since, $\chi^2$(=183.16) \> $3.8415$ we reject the null hypothesis `H0` in favor of `Ha` and conclude that there exists a significant dependence of **`Target`** column on **`Gender`** column.
+
+```{r}
+barplot(contingency_table, beside = TRUE, col = c("lightblue", "lightgreen"),
+        main = "Side-by-Side Bar Chart of Gender and Dropout",
+        xlab = "Gender", ylab = "Count",
+        legend.text = TRUE, args.legend = list(x = "topright", bty = "n"))
+```
+
+Despite there being an overwhelmingly higher amount of Females enrolled/graduated compared to Males, the number of dropouts are the same. Males have a higher association with dropping out than females.
+
+## Effects of missing values
+
+Now, we will investigate the effect of missing values on data analysis for the following scenarios:
+
+-   Data missing completely at random (MCAR)
+
+-   Data missing not at random / non-ignorable missing values (MNAR)
+
+### Data missing completely at random (MCAR)
+
+Data can be considered Missing Completely at Random (MCAR) when the likelihood of data being missing is the same for all the observations. In other words, the missingness of data is entirely unrelated to the observed data or any of the unobserved data.
+
+Here are some criteria to consider data as MCAR:
+
+`No Systematic Differences:` There are no systematic differences between the missing values and the observed values. This means that the missing data points are a random subset of the data.
+
+`No Relationship with Other Variables:` The probability that a value is missing is not related to the value of the variable itself or to the value of any other variables. For instance, if you're looking at test scores and gender, the missingness of test scores should not be related to gender or the scores themselves.
+
+`Random Dropouts:` In longitudinal studies, if participants drop out of the study for reasons unrelated to the study or their characteristics, the missing data due to dropout can be considered MCAR.
+
+`Missingness Due to Random Events:` If the missingness is due to a random event (like a survey respondent accidentally skipping a question) and not due to any inherent characteristic of the respondent or the survey design, then it can be considered MCAR.
+
+We don't have any missing values in our dataset, let's simulate a dataset with data missing at random.
+
+```{r}
+
+MCAR_Chi_Test <- function(prop_missing){
+  set.seed(123) 
+
+  data$Gender_MCAR <- data$Gender
+  data$Dropout_MCAR <- data$dropout
+  
+  missing_indices_gender <- sample(1:nrow(data), size = round(prop_missing * nrow  (data)))
+  missing_indices_dropout <- sample(1:nrow(data), size = round(prop_missing * nrow  (data)))
+  
+  data$Gender_MCAR[missing_indices_gender] <- NA
+  data$Dropout_MCAR[missing_indices_dropout] <- NA
+ 
+  contingency_table_MCAR <- table(data[,c('Gender_MCAR','Dropout_MCAR')])
+  names(dimnames(contingency_table_MCAR)) <- c('Gender_MCAR', 'Dropout_MCAR')
+  colnames(contingency_table_MCAR) <- c("Grad/Enrolled", "Dropout")
+  rownames(contingency_table_MCAR) <- c("Female","Male")
+  
+  x_values <- seq(0, critical_value + 10, by = 0.1)
+  chi_sq_df <- data.frame(x = x_values, y = dchisq(x_values, df))
+  ind_test_g_d <- chisq.test(contingency_table_MCAR)
+  
+   result <- sprintf("For %s%% of missing values, the chi-square value is %f", prop_missing * 100, ind_test_g_d$statistic)
+  print(result)
+}
+
+```
+
+The above function, modifies the dataset by adding new columns **`Gender_MCAR`** and **`Target_MCAR`** for variable percentages of missing values `(e.g 10%,20%,30%,40%,50%)` , these columns consists of the same data as the columns **`Gender`** and **`Target`** but also null values for the students. Also, performs the hypothesis testing on newly created columns and prints $\chi^2$ of each test.
+
+```{r}
+for (i in 1:5) {
+  MCAR_Chi_Test(0.1*i)
+}
+```
+
+The chi-square values decrease as the percentage of missing values increases. This suggests that as you introduce more missing data, the association between **`Gender_MCAR`** and **`Dropout_MCAR`** becomes weaker or less significant. But, association between them still exists as all the $\chi^2$ value greater than critical value (= 3.841459).
+
+## Data missing not at random (MNAR)
+
+# TO DO
+
+## Hypothesis - 2
+
+############### 
+
+`Null hypothesis - H0` : The likelihood of a student dropping out is not impacted by economic climate when courses, gender, and grades are equal.
+
+`Alternative hypothesis - Ha` : The likelihood of a student dropping out is impacted by economic climate when courses, gender, and grades are equal.
+
+`Significance Level` - ($\alpha$) = 0.05
+
+To identify the influence of independent variable on dependent variable we use `Generalized Linear Model (GLM)`. A Generalized Linear Model (GLM) is a flexible generalization of ordinary linear regression that allows for dependent variables that have error distribution models other than a normal distribution. GLM generalizes linear regression by allowing the linear model to be related to the dependent variable via a link function and by allowing the magnitude of the variance of each measurement to be a function of its predicted value.
+
+`Critical region`, for the test, is defined based on the p-values of the coefficients in the logistic regression model. If the p-value for any of the coefficients (marital status, age, previous academic qualifications and grades ) is less than 0.05, we reject null hypothesis. \###########
+
+```{r}
+
+logit_model <- glm(dropout ~ Course + Admission_grade + Curricular_units_Sem1_grade +	Unemployment_rate +	Inflation_rate + GDP + Gender
+, family = binomial(), data = data)
+
+model_summary <- summary(logit_model)
+print(model_summary)
+
+```
+
+`Conclusions:` \####### None of the economic KPI's were significant. Unemployment, Inflation rate and GDP all had p values greater than 0.05. The variables that had significant relationships with dropout were Gender, admission grades and the students semester 1 grade (P values \< 0.01). Specific courses also showed significant differences in the likelihood of dropping out, notably course 171 had the lowest odds of dropping out.
+
+## Effects of missing values
+
+Now, we will investigate the effect of missing values on data analysis for the following scenarios:
+
+-   Data missing completely at random (MCAR)
+
+-   Data missing not at random / non-ignorable missing values (MNAR)
+
+### Data missing completely at random (MCAR)
+
+We don't have any missing values in our dataset, let's simulate a dataset with data missing at random. \###############
+
+```{r}
+MCAR_Chi_TestII <- function(prop_missing){ 
+
+  set.seed(123)
+  
+  data1<-data
+
+  columns_to_miss <- c("Marital_status", "Course", "Attendance", 
+                       "Previous_qualification", "Previous_qualification_grade", 
+                       "Admission_grade", "Educational_special_needs", "Debtor", 
+                       "Gender", "Scholarship_holder", "Age_at_enrollment", 
+                       "Curricular_units_Sem1_grade", "Curricular_units_Sem2_grade",                      "Unemployment_rate", "Inflation_rate", "GDP")
+
+  for (col in columns_to_miss) {
+    num_missing <- round(prop_missing * nrow(data1))
+
+    missing_indices <- sample(1:nrow(data1), size = num_missing)
+    
+    data1[[col]][missing_indices] <- NA
+  }
+  
+  logit_model_MCAR <- glm(dropout ~ Course + Admission_grade + Curricular_units_Sem1_grade +	Unemployment_rate +	Inflation_rate + GDP + Gender
+, family = binomial(), data = data1)
+
+  model_summary_MCAR <- summary(logit_model_MCAR)
+  print(model_summary_MCAR)
+}
+
+
+```
+
+The above function, modifies the dataset columns by inserting null values for all the columns by varied percentages of missing values `(10%,20%,30%)` . Also, builds **`GLM`** on newly modified dataset.
+
+```{r}
+for (i in 1:3) {
+  MCAR_Chi_TestII(0.1*i)
+}
+```
+
+############### 
+
+Above are the observations made from outputs of GLM for following MCAR percentages `( 10%, 20%, 30% )`. As the level of MCAR increases, the model's ability to identify significant predictors and compute reliable estimates changes, particularly evident in the 30% MCAR model.
+
+### Overall takeaway:
+
+-   The more data that was randomly removed correlated with less predictors being significant, until only the curricular semester 1 grade remained significant at alpha of 0.01. Economic factors did not become significant so the results of testing hypothesis 2 under MCAR did not change.
+
+### Model with 10% MCAR:
+
+-   **Significant Predictors**: Curricular semester 1 grade, gender and course 171 are the only variables remaining significant at alpha of 0.01.
+
+### Model with 20% MCAR:
+
+-   **Significant Predictors**: Curricular semester 1 grade and gender are the only variables remaining significant at alpha of 0.01.
+-   **Increased Missing Data**: The change in significant predictors suggests that the increased missing data might be affecting the reliability and consistency of the model.
+
+### Model with 30% MCAR:
+
+-   **Coefficients Undefined**: Curricular semester 1 grade is the only variable remaining significant at alpha of 0.01.
+
+## Data missing not at random (MNAR)
+
+############### 
+
+-   **Scenario**: Data often needs to be stored which can be costly. In this scenario to lower operating costs the university decides to move inactive/old grading information to a different server, However, there was an error in the transfer of data which has damaged the original information. Those who have been in courses 33, 9119, 9130, 9991, 9853 have had their grades and personal identification info lost. These courses were the ones with the highest rates of dropping out (each \>= 40%)
+
+```{r}
+table(data$Course, data$dropout)
+
+course_data_alteration <- function(data,courses = c(33,9119, 9130, 9991, 9853)) {
+  for (i in seq(1:nrow(data))) {
+    if (data[i,c('Course')] %in% courses) {
+      data[i, c("Curricular_units_Sem1_grade", "Curricular_units_Sem2_grade", "Gender", "Scholarship_holder", "Age_at_Enrollment","Debtor","Admission_grade")] <- rep(NA,7)
+    }
+  }
+  return(data)
+}
+```
+
+```{r}
+data_MNAR <- course_data_alteration(data)
+```
+
+The association between Gender and Dropout remain significant, though it appears the vast majority of those in the missing courses were female, under representing the strength of association between being a male and risk of dropping out.
+
+```{r}
+contingency_table_MNAR <- table(data_MNAR[,c('Gender','dropout')])
+names(dimnames(contingency_table_MNAR)) <- c('Gender', 'Dropout')
+colnames(contingency_table_MNAR) <- c("Grad/Enrolled", "Dropout")
+rownames(contingency_table_MNAR) <- c("Female","Male")
+print(contingency_table_MNAR)
+
+chisq.test(contingency_table_MNAR)
+```
+
+Checking the logistic regression model used previously to check for any changes in significant dropout predictors. As these courses contained all classes held at night, attendance has become singular and therefore has been dropped from the model. There appears to not be any change in significant predictors for dropout despite removal of half of the available courses.
+
+```{r}
+logit_model_MNAR <- glm(dropout ~ Course + Admission_grade + Curricular_units_Sem1_grade +	Unemployment_rate +	Inflation_rate + GDP + Gender
+, family = binomial(), data = data_MNAR)
+
+summary(logit_model_MNAR)
+```
+
+```{r}
+variables_to_impute <- c("Curricular_units_Sem1_grade", "Curricular_units_Sem2_grade", "Gender", "Scholarship_holder", "Age_at_Enrollment", "Debtor", "Admission_grade")
+
+imputation_model <- mice(data_MNAR[, variables_to_impute], method = "rf")
+
+imputed_data <- complete(imputation_model)
+
+data_imputed <- cbind(data_MNAR[, -which(names(data_MNAR) %in% variables_to_impute)], imputed_data)
+```
+
+The association between Gender and Dropout remain significant, the skew of female to male was not able to be recovered.
+
+```{r}
+contingency_table_imputed <- table(data_imputed[,c('Gender','dropout')])
+names(dimnames(contingency_table_imputed)) <- c('Gender', 'Dropout')
+colnames(contingency_table_imputed) <- c("Grad/Enrolled", "Dropout")
+rownames(contingency_table_imputed) <- c("Female","Male")
+print(contingency_table_imputed)
+
+chisq.test(contingency_table_imputed)
+```
+
+**MICE reinputed logistic regression, didn't have time to write anything.**
+
+```{r}
+logit_model_imputed <- glm(dropout ~  Course + Admission_grade + Curricular_units_Sem1_grade +	Unemployment_rate +	Inflation_rate + GDP + Gender
+, family = binomial(), data = data_imputed)
+
+summary(logit_model_imputed)
+```
